@@ -1,5 +1,4 @@
-struct pidGains
-{
+struct pidGains {
 	float p;
 	float i;
 	float d;

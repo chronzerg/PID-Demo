@@ -1,7 +1,6 @@
 #include "pid.h"
 
-float calculatePIDResponse (struct pidGains gains, float setPoint, float point, float dt)
-{
+float calculatePIDResponse (struct pidGains gains, float setPoint, float point, float dt) {
 	static float prevError = 0;
 	static float integral = 0;
 	float error;

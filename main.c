@@ -1,65 +1,119 @@
-#include <SDL/SDL.h>
+#include <SDL.h>
+#include <SDL_timer.h>
+#include <stdio.h>
 #include "pid.h"
 #include "physics.h"
 
-bool running = false;
-int setPoint = 0;
-float force = 0;
-float mass = 1;
-int dt = 0;
-SDL_Surface* display = NULL;
+#define TRUE 0
+#define FALSE 1
+
+#define SCREEN_WIDTH 640
+#define SCREEN_HEIGHT 480
+
+#define MARKER_WIDTH 60
+#define MARKER_HEIGHT 20
+#define MARKER_MARGIN 50
+#define MARKER_MASS 1
+
+int running = TRUE;
+int mouseX = 0;
+
+SDL_Window* window = NULL;
+SDL_Renderer* renderer = NULL;
 
 struct pidGains gains;
 struct physicalFrame pFrame;
 
-bool Init () {
-	if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
-        return false;
+int Init () {
+	if (SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_EVENTS) < 0) {
+        return FALSE;
     }
 
-	if ((display = SDL_SetVideoMode(640, 480, 32, SDL_HWSURFACE | SDL_DOUBLEBUF)) == NULL) {
-		return false;
+	if ((window = SDL_CreateWindow("PID Demo", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, 0)) == NULL) {
+		return FALSE;
 	}
 
-	gains.p = 1;
-	gains.i = 1;
-	gains.d = 1;
+	if ((renderer = SDL_CreateRenderer(window, -1, 0)) == NULL) {
+		return FALSE;
+	}
 
-	pFrame.x = 0;
+	gains.p = 20;
+	gains.i = 1;
+	gains.d = 5;
+
+	pFrame.x = (SCREEN_WIDTH / 2) - (MARKER_WIDTH / 2);
 	pFrame.v = 0;
 	pFrame.a = 0;
+
+	return TRUE;
 }
 
 void Loop () {
-	// TODO - Calculate dt.
+	static int lastTicks = 0;
+	static float force = 0;
+	float dt;
+	int ticks;
 
-	pFrame = calculateNextPhysicalFrame(pFrame, mass, force, dt);
-	force = calculatePIDResponse(gains, setPoint, pFrame.x, dt);
+	ticks = SDL_GetTicks();
+	dt = (ticks - lastTicks) / 1000.0;
+	lastTicks = ticks;
+
+	if (dt == 0) {
+		return;
+	}
+
+	pFrame = calculateNextPhysicalFrame(pFrame, MARKER_MASS, force, dt);
+	force = (calculatePIDResponse(gains, mouseX, pFrame.x, dt));
+
+	printf("%d | %f %f %f | %f | %f\n", mouseX, pFrame.x, pFrame.v, pFrame.a, force, dt);
 }
 
 void Render () {
-	// TODO - Render the frame.
-}
+	struct SDL_Rect rect;
+	rect.x = pFrame.x - (MARKER_WIDTH / 2);
+	rect.y = MARKER_MARGIN;
+	rect.w = MARKER_WIDTH;
+	rect.h = MARKER_HEIGHT;
 
-void CleanUp () {
-	SDL_FreeSurface(display);
-	SDL_Quit();
+	// Clear frame to black
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+	SDL_RenderClear(renderer);
+
+	// Draw white rectangle
+	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+	SDL_RenderFillRect(renderer, &rect);
+
+	// Flip frame
+	SDL_RenderPresent(renderer);
 }
 
 void OnEvent (SDL_Event* event) {
-	if (event->type == SDL_MOUSEMOTION) {
-		setPoint = event->motion.x;
+	switch(event->type) {
+		case SDL_MOUSEMOTION:
+			mouseX = event->motion.x;
+			break;
+
+		case SDL_QUIT:
+			running = FALSE;
+			break;
 	}
 }
 
+void CleanUp () {
+	SDL_DestroyRenderer(renderer);
+	SDL_DestroyWindow(window);
+	SDL_Quit();
+	printf("Quiting...\n");
+}
+
 int main (int argc, char *argv[]) {
-	if (Init() == false) {
+	SDL_Event event;
+
+	if (Init() == FALSE) {
 		return -1;
 	}
 
-	SDL_Event event;
-
-	while(running) {
+	while(running == TRUE) {
 		while(SDL_PollEvent(&event)) {
 			OnEvent(&event);
 		}

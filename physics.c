@@ -10,5 +10,5 @@ struct physicalFrame calculateNextPhysicalFrame (struct physicalFrame frame, flo
 	nextFrame.v = v;
 	nextFrame.a = a;
 
-	return physicalFrame;
+	return nextFrame;
 }

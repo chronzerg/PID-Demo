@@ -10,8 +10,7 @@ float calculatePIDResponse (struct pidGains gains, float setPoint, float point, 
 	integral = integral + (error * dt);
 	derivative = (error - prevError) / dt;
 
-	pidState.prevError = error;
-	pidState.integral = integral;
+	prevError = error;
 
 	return (gains.p * error) + (gains.i * integral) + (gains.d * derivative);
 }

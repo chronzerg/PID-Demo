@@ -1,4 +1,5 @@
+SDL_CFLAGS = $(shell sdl2-config --cflags)
+SDL_LIBS = $(shell sdl2-config --libs)
+
 all:
-	gcc -o demo main.c physics.c pid.c -I/usr/local/include/SDL2 -I/usr/X11R6/include -D_THREAD_SAFE -L/usr/local/lib -lSDL2
-
-
+	gcc -o demo main.c physics.c pid.c $(SDL_CFLAGS) $(SDL_LIBS)

@@ -1,5 +1,5 @@
 struct physicalFrame {
-	float x;
+	float p;
 	float v;
 	float a;
 };

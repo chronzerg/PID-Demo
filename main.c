@@ -1,6 +1,8 @@
 #include <SDL.h>
 #include <SDL_timer.h>
+#include <SDL_image.h>
 #include <stdio.h>
+#include <math.h>
 #include "pid.h"
 #include "physics.h"
 
@@ -10,26 +12,32 @@
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
 
-#define MARKER_WIDTH 60
-#define MARKER_HEIGHT 20
-#define MARKER_MARGIN 50
-#define MARKER_MASS 1
+#define POLICE_WIDTH 70
+#define POLICE_HEIGHT 35
+#define POLICE_MASS 1
 
 int running = TRUE;
 int mouseX = 0;
+int mouseY = 0;
 
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
+SDL_Texture* police = NULL;
+SDL_Rect policeDest;
 
 struct pidGains gains;
-struct physicalFrame pFrame;
+struct pidState stateX;
+struct pidState stateY;
+
+struct physicalFrame frameX;
+struct physicalFrame frameY;
 
 int Init () {
 	if (SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_EVENTS) < 0) {
         return FALSE;
     }
 
-	if ((window = SDL_CreateWindow("PID Demo", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, 0)) == NULL) {
+	if ((window = SDL_CreateWindow("PID Demo", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_FULLSCREEN)) == NULL) {
 		return FALSE;
 	}
 
@@ -37,20 +45,38 @@ int Init () {
 		return FALSE;
 	}
 
-	gains.p = 20;
+	if ((police = SDL_CreateTextureFromSurface(renderer, IMG_Load("./police.png"))) == NULL) {
+		return FALSE;
+	}
+
+	policeDest.w = POLICE_WIDTH;
+	policeDest.h = POLICE_HEIGHT;
+
+	gains.p = 10;
 	gains.i = 1;
 	gains.d = 5;
 
-	pFrame.x = (SCREEN_WIDTH / 2) - (MARKER_WIDTH / 2);
-	pFrame.v = 0;
-	pFrame.a = 0;
+	frameX.p = (SCREEN_WIDTH / 2) - (POLICE_WIDTH / 2);
+	frameX.v = 0;
+	frameX.a = 0;
+
+	frameY.p = (SCREEN_HEIGHT / 2) - (POLICE_HEIGHT / 2);
+	frameY.v = 0;
+	frameY.a = 0;
+
+	stateX.error = 0;
+	stateX.integral = 0;
+
+	stateY.error = 0;
+	stateY.integral = 0;
 
 	return TRUE;
 }
 
 void Loop () {
 	static int lastTicks = 0;
-	static float force = 0;
+	static float forceX = 0;
+	static float forceY = 0;
 	float dt;
 	int ticks;
 
@@ -62,26 +88,31 @@ void Loop () {
 		return;
 	}
 
-	pFrame = calculateNextPhysicalFrame(pFrame, MARKER_MASS, force, dt);
-	force = (calculatePIDResponse(gains, mouseX, pFrame.x, dt));
+	frameX = calculateNextPhysicalFrame(frameX, POLICE_MASS, forceX, dt);
+	frameY = calculateNextPhysicalFrame(frameY, POLICE_MASS, forceY, dt);
 
-	printf("%d | %f %f %f | %f | %f\n", mouseX, pFrame.x, pFrame.v, pFrame.a, force, dt);
+	forceX = calculatePIDResponse(&stateX, gains, mouseX, frameX.p, dt);
+	forceY = calculatePIDResponse(&stateY, gains, mouseY, frameY.p, dt);
 }
 
 void Render () {
-	struct SDL_Rect rect;
-	rect.x = pFrame.x - (MARKER_WIDTH / 2);
-	rect.y = MARKER_MARGIN;
-	rect.w = MARKER_WIDTH;
-	rect.h = MARKER_HEIGHT;
+	policeDest.x = frameX.p - (POLICE_WIDTH / 2);
+	policeDest.y = frameY.p - (POLICE_HEIGHT / 2);
+
+	float angle = atan2(-frameY.v, -frameX.v) * (180.0 / M_PI);
 
 	// Clear frame to black
-	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 	SDL_RenderClear(renderer);
 
-	// Draw white rectangle
-	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-	SDL_RenderFillRect(renderer, &rect);
+	// Draw police car
+	SDL_RenderCopyEx(renderer, police, NULL, &policeDest, angle, NULL, SDL_FLIP_NONE);
+
+	// Draw vectors
+	SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+	SDL_RenderDrawLine(renderer, frameX.p, frameY.p, frameX.p+(frameX.a/5), frameY.p+(frameY.a/5));
+	SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+	SDL_RenderDrawLine(renderer, frameX.p, frameY.p, frameX.p+(frameX.v/5), frameY.p+(frameY.v/5));
 
 	// Flip frame
 	SDL_RenderPresent(renderer);
@@ -91,6 +122,13 @@ void OnEvent (SDL_Event* event) {
 	switch(event->type) {
 		case SDL_MOUSEMOTION:
 			mouseX = event->motion.x;
+			mouseY = event->motion.y;
+			break;
+
+		case SDL_KEYUP:
+			if (event->key.keysym.sym == SDLK_q) {
+				running = FALSE;
+			}
 			break;
 
 		case SDL_QUIT:

@@ -1,16 +1,14 @@
 #include "pid.h"
 
-float calculatePIDResponse (struct pidGains gains, float setPoint, float point, float dt) {
-	static float prevError = 0;
-	static float integral = 0;
+float calculatePIDResponse (struct pidState* state, struct pidGains gains, float setPoint, float point, float dt) {
 	float error;
 	float derivative;
 
 	error = setPoint - point;
-	integral = integral + (error * dt);
-	derivative = (error - prevError) / dt;
+	state->integral = state->integral + (error * dt);
+	derivative = (error - state->error) / dt;
 
-	prevError = error;
+	state->error = error;
 
-	return (gains.p * error) + (gains.i * integral) + (gains.d * derivative);
+	return (gains.p * error) + (gains.i * state->integral) + (gains.d * derivative);
 }

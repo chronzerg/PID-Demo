@@ -4,4 +4,9 @@ struct pidGains {
 	float d;
 };
 
-float calculatePIDResponse (struct pidGains, float, float, float);
+struct pidState {
+	float error;
+	float integral;
+};
+
+float calculatePIDResponse (struct pidState*, struct pidGains, float, float, float);

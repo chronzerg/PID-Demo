@@ -1,6 +1,5 @@
 #include <SDL.h>
 #include <SDL_timer.h>
-#include <SDL_image.h>
 #include <stdio.h>
 #include <math.h>
 #include "pid.h"
@@ -34,20 +33,27 @@ struct physicalFrame frameY;
 
 int Init () {
 	if (SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_EVENTS) < 0) {
-        return FALSE;
+        return 1;
     }
 
 	if ((window = SDL_CreateWindow("PID Demo", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_FULLSCREEN)) == NULL) {
-		return FALSE;
+		return 2;
 	}
 
 	if ((renderer = SDL_CreateRenderer(window, -1, 0)) == NULL) {
-		return FALSE;
+		return 3;
 	}
 
-	if ((police = SDL_CreateTextureFromSurface(renderer, IMG_Load("./police.png"))) == NULL) {
-		return FALSE;
+	SDL_Surface* policeBMP;
+	if ((policeBMP = SDL_LoadBMP("./police.bmp")) == NULL) {
+		return 4;
 	}
+
+	if ((police = SDL_CreateTextureFromSurface(renderer, policeBMP)) == NULL) {
+		return 5;
+	}
+
+	SDL_FreeSurface(policeBMP);
 
 	policeDest.w = POLICE_WIDTH;
 	policeDest.h = POLICE_HEIGHT;
@@ -70,7 +76,7 @@ int Init () {
 	stateY.error = 0;
 	stateY.integral = 0;
 
-	return TRUE;
+	return 0;
 }
 
 void Loop () {
@@ -137,30 +143,42 @@ void OnEvent (SDL_Event* event) {
 	}
 }
 
-void CleanUp () {
-	SDL_DestroyRenderer(renderer);
-	SDL_DestroyWindow(window);
-	SDL_Quit();
-	printf("Quiting...\n");
+void PrintError (int error) {
+	switch(error) {
+		case 1:
+			puts("Failed to init SDL.");
+			break;
+		case 2:
+			puts("Failed to create SDL window.");
+			break;
+		case 3:
+			puts("Failed to creater SDL renderer.");
+			break;
+		case 4:
+			puts("Failed to load police.bmp");
+			break;
+		case 5:
+			puts("Failed to texturize police.png");
+			break;
+	}
 }
 
 int main (int argc, char *argv[]) {
 	SDL_Event event;
 
-	if (Init() == FALSE) {
+	int error = Init();
+	if (error) {
+		PrintError(error);
+		SDL_Quit();
 		return -1;
 	}
 
 	while(running == TRUE) {
-		while(SDL_PollEvent(&event)) {
-			OnEvent(&event);
-		}
-
+		while(SDL_PollEvent(&event)) { OnEvent(&event); }
 		Loop();
 		Render();
 	}
 
-	CleanUp();
-
+	SDL_Quit();
 	return 0;
 }

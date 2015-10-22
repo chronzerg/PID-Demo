@@ -55,6 +55,13 @@ int Init () {
 
 	SDL_FreeSurface(policeBMP);
 
+	SDL_Cursor* cursor;
+	if ((cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_CROSSHAIR)) == NULL) {
+		return 6;
+	}
+
+	SDL_SetCursor(cursor);
+
 	policeDest.w = POLICE_WIDTH;
 	policeDest.h = POLICE_HEIGHT;
 
@@ -155,11 +162,13 @@ void PrintError (int error) {
 			puts("Failed to creater SDL renderer.");
 			break;
 		case 4:
-			puts("Failed to load police.bmp");
+			puts("Failed to load police.bmp.");
 			break;
 		case 5:
-			puts("Failed to texturize police.png");
+			puts("Failed to texturize police.png.");
 			break;
+		case 6:
+			puts("Failed to create cursor.");
 	}
 }
 

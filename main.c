@@ -13,7 +13,7 @@
 
 #define POLICE_WIDTH 70
 #define POLICE_HEIGHT 35
-#define POLICE_MASS 1000 //kg
+#define POLICE_MASS 10 //kg
 
 int running = TRUE;
 int mouseX = 0;
